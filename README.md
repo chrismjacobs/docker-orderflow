@@ -2,7 +2,7 @@
 
 # This orderflow application was designed to emulate services that provide orderflow data for markets.
 
-It is a containerized application that contains several components.
+It is a docker containerized application that contains several components.
 
 * The main worker recieves and processes an appi data stream from the Bybit echange.
 * This data is further processed through other celery workers that store the processed data in a Redis database.
