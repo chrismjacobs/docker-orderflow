@@ -1,0 +1,2240 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="{{headLogo}}">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='main.css') }}">
+  <script src="https://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+
+</head>
+
+<body style="background:black">
+    <main role="main" class="container-md">
+
+        <div id="vue-app" :class="getMargin()" >
+
+            <div class="text-white" align="center">
+                <br>
+
+                <h1>
+                    <span v-if="stream['lastPrice']">[[  stream['lastPrice']  ]] </span>
+                    <span v-else> Loading ... </span> <br>
+                </h1>
+
+                <div v-if="stream['alerts']">
+                    <div v-if="!showAlerts" @click="showAlerts = !showAlerts">
+                        <span class="text-danger"> [[getAlert('note', 0)]] </span>
+                        <br>
+                        <span class="text-danger"> [[getAlert('info', 0)]] </span>
+                    </div>
+                    <div v-if="showAlerts" @click="showAlerts = !showAlerts">
+                        <span  v-for="(item, key) in stream['alerts']" class="text-danger">
+                            <span class="text-danger"> [[getAlert('note', key)]] </span>
+                            <br>
+                            <span class="text-danger"> [[getAlert('info', key)]] </span>
+                            <br>
+                        </span>
+
+                    </div>
+                </div>
+
+                <audio id="xyz" src="https://rekt-journal.s3.ap-northeast-1.amazonaws.com/alert.mp3" style="display:none" controls preload="auto"></audio>
+
+
+                <br>
+                <button @click="toggleCoin()" type="button" class="btn btn-danger" data-bs-toggle="button" autocomplete="off">[[coin]]</button>
+                <button @click="showChart += 1" type="button" class="btn btn-light" data-bs-toggle="button" autocomplete="off">Chart</button>
+                <button style="display:none" @click="showTable='Time'" type="button" class="btn btn-info" data-bs-toggle="button" autocomplete="off">Time</button>
+                <button style="display:none" @click="showTable='Volume'" type="button" class="btn btn-warning" data-bs-toggle="button" autocomplete="off" aria-pressed="true">Volume</button>
+                <button v-if="user" @click="goTo('journal')" type="button" class="btn btn-warning" data-bs-toggle="button" autocomplete="off">Journal</button>
+                <button v-if="user" @click="goTo('trade')" type="button" class="btn btn-success" data-bs-toggle="button" autocomplete="off">Trade</button>
+                <button @click="showTable='Notes'" type="button" class="btn btn-secondary" data-bs-toggle="button" autocomplete="off">&#x2699;</button>
+
+
+                <br>
+                <br>
+
+            </div>
+            <div v-if="showChart == 1 && showTable !='Notes'" class="overflow-auto" style="width: 100%;color:#9E9E9E">
+                <div class="row">
+                    <div class="col">
+                        <div class="ct-chart ct-minor-sixth" id="chart1"></div>
+                        <h4 class="ml-2">
+                            <span @click="setLookBack(+2)" class="ml-2 mr-2" >&#x2190</span>
+                            <span >[[lookback]]Hrs</span>
+                            <span @click="setLookBack(-2)" class="ml-2">&#x2192</span>
+                        </h4>
+                    </div>
+                    <div class="col">
+                        <div class="ct-chart ct-minor-sixth"  id="chart2"></div>
+                        <h4 class="ml-2"> CVD </h4>
+                    </div>
+
+                    <div class="col" v-if="!mobile">
+                        <div class="ct-chart ct-minor-sixth"  id="chart3"></div>
+                        <h4 class="ml-2"> OI </h4>
+                    </div>
+                    <div  class="col" v-if="!mobile">
+                        <div class="ct-chart ct-minor-sixth"  id="chart4"></div>
+                        <h4 class="ml-2"> Vol </h4>
+                    </div>
+
+                </div>
+                <div v-if="mobile" class="row">
+                    <div class="col">
+                        <div class="ct-chart ct-minor-sixth"  id="chart3"></div>
+                        <h4 class="ml-2"> OI </h4>
+                    </div>
+                    <div  class="col">
+                        <div class="ct-chart ct-minor-sixth"  id="chart4"></div>
+                        <h4 class="ml-2"> Vol </h4>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="showChart == 2 && showTable !='Notes'" style="width: 100%;color:#9E9E9E">
+                <h4 class="ml-2">
+                    <span v-if="!mobile"> Lookback </span>
+                    <span @click="setLookBack(+2)" class="ml-2 mr-2" >&#x2190</span>
+                    <span >[[lookback]]Hrs</span>
+                    <span @click="setLookBack(-2)" class="ml-2">&#x2192</span>
+                </h4>
+
+                <div class="ct-chart" style="height:200px" id="chart1"></div>
+                <div class="ct-chart" style="height:100px" id="chart4"></div>
+
+                <div class="ct-chart" style="height:200px" id="chart2"></div>
+
+                <div class="ct-chart" style="height:150px" id="chart3"></div>
+            </div>
+
+            <div align="center" :style="getFont()">
+
+                <div v-if="showTable == 'Notes'" class="text-white p-3">
+
+                    <button @click="showTable = 'Time'" type="button" class="btn btn-danger" data-bs-toggle="button" autocomplete="off">Back</button>
+
+                    <br>
+                    <br>
+
+                    <div>
+
+                        <h3 style="color:Hotpink"> Important Notes for User </h3>
+
+                        <h5> This webapp may undergo maintanance on Sundays and may be unusable for a period </h5>
+                        <h5> This webapp is free to use and currently uses the cheapest server set up; <br> if excessively high volume occurs suddenly (eg 100 mil in 5 min), then CPU usage will be maxed out and the data stream will lag for sometime making the webapp unusable as a live orderflow reference</h5>
+                        <h5> This webapp is an ongoing project, the user interface may change, new features may appear, ideas are welcome (please contact the developer on Discord)</h5>
+
+                    </div>
+
+                    <br>
+
+                    <h3> Settings </h3>
+
+                    <br>
+
+                    Time adjusted from UTC  &nbsp&nbsp
+
+                    <input type="number" v-model="UTCadjust" style="width:10%" align='center'>
+
+                    <br>
+                    <br>
+
+                    Imbalances % &nbsp&nbsp
+
+                    <input type="number" v-model="imbalance" style="width:10%" align='center'>
+
+                    <br>
+                    <br>
+
+                    Timer
+
+                    <input type="number" v-model="timerMilli" style="width:10%" align='center'>
+
+                    <br>
+                    <br>
+
+
+                    Alert Sound &nbsp&nbsp
+                    <button @click="alertOn = !alertOn" type="button" class="btn btn-secondary" data-bs-toggle="button">[[alertOn]]</button>
+
+                    <br>
+                    <br>
+
+                    <h3> Stream Data </h3>
+
+                    - Data avalable is from current day and previous day <br>
+                    - Taken from Bybit API (BTCUSD.perp) <br>
+                    - Data is refreshed every 3 secs <br>
+
+                    - Time mode is set to minimum 5 mins and can be 5/15/30/60 mins <br>
+                    - PVA candles will be highlighted<br>
+                    - Possible occurance of CVD divergence will also be highlighted in the CVD column<br>
+                    <br>
+                    - Volume mode has different block size depending on the coin symbol <br>
+                    - Volume blocks are exact divisions eg a 5mil block is exactly 5mil <br>
+                    (this is different from exocharts which doesn't split and carry over large trades whereby a 5mil block is often more than 5mil) <br>
+                    Therefore, volume block data will differ slightly from exocharts (developer's personal choice) <br>
+                    <br>
+
+                    <h3> Display Notes </h3>
+
+                    - When viewing on mobile, setting the browser to desktop view fits more data on the page <br>
+                    - Clicking orderflow charts makes them larger <br>
+                    - Clicking orderflow header will change the position of FPBS table <br>
+                    - This webapp has not been tested on all device sizes and not display well on some devices <br>
+
+
+                    <br>
+                    <h3> Alerts </h3>
+
+                    Alert system is experimental and may include: <br>
+
+                    CVD Divergence / High volume candle with flat OI / Sudden dramatic changes in OI
+                    <br>
+                    <br>
+
+
+                    <h3> More from the Developer </h3>
+
+                    Here are some private trading view indicators available to try:
+                    <br>
+                    <br>
+
+                    <a href="https://www.tradingview.com/script/xKXQr74f-Level-Alerts/">Level Alerts - a customized version of the popular key level indicator </a>
+
+
+                    <br>
+                    <br>
+
+                    This webapp is not accepting registrations
+
+                    <br>
+                    <br>
+
+                    <button v-if="!user" @click="goTo('login')" type="button" class="btn" data-bs-toggle="button" autocomplete="off">Login</button>
+                    <button v-else @click="goTo('logout')" type="button" class="btn" data-bs-toggle="button" autocomplete="off">Logout</button>
+
+                    <br>
+                    <br>
+
+                </div>
+
+                <br>
+
+                <div id="timeOF" v-if="showTable != 'Notes'">
+
+                    <div  class="border border-info text-info rounded pt-2 pb-1" >
+                        <h3> <span @click="flowPositionTime += 1"> Time Flow [[timeBlockSize]]m </span>
+                                <span @click="setTickLookBack(+10)" class="ml-2" >&#8593</span>
+                                <span @click="setTickLookBack(-10)" class="ml-2">&#8595</span>
+                                ([[tickLookback]] Bars)
+                        </h3>
+                    </div>
+
+                    <div style="color:white" id="tbf" class="table-responsive flow">
+                        <table class="table table-dark table-sm table-fixed flow">
+
+                            <tbody>
+                                <template v-if="flowPositionTime == 1" v-for="(item, key) in getTicksReversedTime" :key="key" >
+                                            <tr :style="getCurrent(item)">
+                                                <th class="text-info" scope="row"> [[item]] </th>
+                                                <template v-for="(tick, index) in getTickCandlesTime[item]" :key="index">
+                                                    <td :style="getBorders(index, 'left', item, tick.Sell, 'time')"  :id="key + '_' + index + '_sell_' + item" @click="markPosition(key, index, 'sell', item)">
+                                                        <span v-if="tick.Sell" :style="getImbalance('sell', tick.SellPer)" >[[ roundData(tick.Sell) ]]</span>
+                                                    </td>
+                                                    <td :style="getBorders(index, 'right', item, tick.Buy, 'time' )" :id="key + '_' + index + '_buy_' + item" @click="markPosition(key, index, 'buy', item)">
+                                                        <span v-if="tick.Buy" :style="getImbalance('buy', tick.BuyPer)">[[ roundData(tick.Buy) ]]</span>
+                                                    </td>
+                                                </template>
+                                                <th class="text-info" scope="row"> [[item]] </th>
+                                            </tr>
+                                </template>
+
+                                <template>
+                                    <tr>
+                                        <td> - </td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                                <td colspan="2" class="text-info"></td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    </tr>
+
+                                    <tr>
+                                        <td>Time</td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                                <td colspan="2" class="text-info"> [[getTime(item.timestamp, 'v')]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>Vol</td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                            <td colspan="2"  :style="getVolumeStyle(item.pva_status, key, item.price_delta)">[[roundData(item.total)]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td @click="showDelta = !showDelta">Delta</td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                            <td colspan="2"  :style="getDeltaStyle(item.delta, 0, item.total)">[[roundData(item.delta)]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>%</td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                            <td colspan="2"   :style="getDeltaStyle(item.delta, 0, item.total)">[[getPercent(item.delta, item.total)]]%</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr v-if="showDelta" >
+                                        <td>Sells</td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                            <td colspan="2"   :style="getDeltaStyle(item.sells, -1)">[[roundData(item.sells)]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr v-if="showDelta">
+                                        <td>Buys</td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                            <td colspan="2"   :style="getDeltaStyle(item.buys, 1)">[[roundData(item.buys)]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>CVD</td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                            <td colspan="2" :style="getCVDStyle(item.divergence, key, item.delta_cumulative, 'OF')">[[roundData(item.delta_cumulative)]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>OI</td>
+                                        <template v-for="(item, key) in getOFTableTime" :key="key" >
+                                            <td colspan="2" :style="getOIStyle(item.oi_delta)">[[roundData(item.oi_delta, item.total)]] </td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+                                </template>
+
+                                <template v-if="flowPositionTime == 2" v-for="(item, key) in getTicksReversedTime" :key="key" >
+                                    <tr :style="getCurrent(item)">
+                                        <th class="text-info" scope="row"> [[item]] </th>
+                                        <template v-for="(tick, index) in getTickCandlesTime[item]" :key="index">
+                                            <td :style="getBorders(index, 'left', item, tick.Sell, 'time')">
+                                                <span v-if="tick.Sell" :style="getImbalance('sell', tick.SellPer)">[[ roundData(tick.Sell) ]]</span>
+                                            </td>
+                                            <td :style="getBorders(index, 'right', item, tick.Buy, 'time' )">
+                                                <span v-if="tick.Buy" :style="getImbalance('buy', tick.BuyPer)">[[ roundData(tick.Buy) ]]</span>
+                                            </td>
+                                        </template>
+                                        <th class="text-info" scope="row"> [[item]] </th>
+                                    </tr>
+                                </template>
+
+                                <template v-if="showChart == 2">
+                                    <tr>
+                                        <td>CVD</td>
+                                        <td></td>
+                                        <td :colspan="tickLookback*2" align="center">
+                                        <div @click="setChartHeight('CVDchart')" class="ct-chart" :style="getChartHeight('CVDchart')" id="chart5"></div>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>OI</td>
+                                        <td></td>
+                                        <td :colspan="tickLookback*2" align="center">
+                                        <div @click="setChartHeight('OIchart')" class="ct-chart" :style="getChartHeight('OIchart')" id="chart6"></div>
+                                        </td>
+                                    </tr>
+                                </template>
+
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <div id="volOF" v-if="showTable != 'Notes'">
+
+                    <div  class="border border-warning text-warning rounded pt-2 pb-1" >
+                        <h3> <span @click="flowPositionVol += 1"> Volume Flow [[ coinOBJ[coin]['volume'][1] ]]m  </span>
+                                <span @click="setTickLookBack(+10)" class="ml-2" >&#8593</span>
+                                <span @click="setTickLookBack(-10)" class="ml-2">&#8595</span>
+                                ([[tickLookback]] Bars)
+                        </h3>
+                    </div>
+                    <div v-if="user" >
+                        <table class="table table-dark vert" class="table-responsive">
+                            <thead>
+                            <tr>
+                                <th scope="col" style="width:10%">Side</th>
+                                <th scope="col">Test</th>
+                                <th scope="col">Price</th>
+                                <th scope="col">Swing</th>
+                                <th scope="col">Stop</th>
+                                <th scope="col">Profit</th>
+                                <th scope="col">Fraction</th>
+                            </tr>
+                            </thead>
+                        <tbody>
+                            <tr>
+                                <th class="text-warning" scope="row"><span @click="volumeEdit = !volumeEdit">Sell (Hi)</span> </th>
+                                <td ><input type="number" maxlength="6" size="6" class="mb-2" style="width:100px;background:firebrick;color:white;font-size:15px" v-model="volswitchOBJ['Sell']['price']"> </input> </td>
+                                <td >[[  coinOBJ['BTC']['volswitch']['Sell']['price']  ]] </td>
+                                <td :style="getSwing(coinOBJ[coin]['volswitch']['Sell']['swing'])">[[  coinOBJ['BTC']['volswitch']['Sell']['swing']  ]] </td>
+                                <td> <span v-if="!volumeEdit"> [[  coinOBJ['BTC']['volswitch']['Sell']['stop']  ]] </span> <span v-else> <input type="number" step="10" class="mb-2" style="width:60px;background:firebrick;color:white;font-size:15px" v-model="volswitchOBJ['Sell']['stop']"></input></span> </td>
+                                <td> <span v-if="!volumeEdit"> [[  coinOBJ['BTC']['volswitch']['Sell']['profit']  ]] </span> <span v-else> <input type="number" step="10" class="mb-2" style="width:60px;background:green;color:white;font-size:15px" v-model="volswitchOBJ['Sell']['profit']"></input></span> </td>
+                                <td> <span v-if="!volumeEdit"> [[  coinOBJ['BTC']['volswitch']['Sell']['fraction']  ]] </span> <span v-else> <input type="number" step="0.1" class="mb-2" style="width:60px;background:grey;color:white;font-size:15px" v-model="volswitchOBJ['Sell']['fraction']"></input></span> </td>
+                            </tr>
+                            <tr>
+                                <th class="text-warning" scope="row"><span @click="volumeEdit = !volumeEdit">Buy (Lo)</span> </th>
+                                <td ><input type="number" maxlength="6" size="6" class="mb-2" style="width:100px;background:green;color:white;font-size:15px" v-model="volswitchOBJ['Buy']['price']"> </input> </td>
+                                <td >[[  coinOBJ['BTC']['volswitch']['Buy']['price']  ]] </td>
+                                <td :style="getSwing(coinOBJ[coin]['volswitch']['Buy']['swing'])">[[  coinOBJ['BTC']['volswitch']['Buy']['swing']  ]] </td>
+                                <td> <span v-if="!volumeEdit"> [[  coinOBJ['BTC']['volswitch']['Buy']['stop']  ]] </span> <span v-else> <input type="number" step="10" class="mb-2" style="width:60px;background:firebrick;color:white;font-size:15px" v-model="volswitchOBJ['Buy']['stop']"></input></span> </td>
+                                <td> <span v-if="!volumeEdit"> [[  coinOBJ['BTC']['volswitch']['Buy']['profit']  ]] </span> <span v-else> <input type="number" step="10" class="mb-2" style="width:60px;background:green;color:white;font-size:15px" v-model="volswitchOBJ['Buy']['profit']"></input></span> </td>
+                                <td> <span v-if="!volumeEdit"> [[  coinOBJ['BTC']['volswitch']['Buy']['fraction']  ]] </span> <span v-else> <input type="number" step="0.1"class="mb-2" style="width:60px;background:grey;color:white;font-size:15px" v-model="volswitchOBJ['Buy']['fraction']"></input> <button @click="setPrices('volswitch')" type="button" class="btn btn-sm btn-secondary" data-bs-toggle="button" autocomplete="off">--</button></span> </td>
+                            </tr>
+
+                        </tbody>
+
+                        </table>
+                    </div>
+
+                    <div  style="color:white" class="table-responsive flow" id="vbf">
+                        <table class="table table-dark table-sm table-fixed">
+
+                            <tbody>
+                                <template v-if="flowPositionVol == 1" v-for="(item, key) in getTicksReversedVolume" :key="key" >
+                                            <tr :style="getCurrent(item)">
+                                                <th class="text-warning" scope="row"> [[item]] </th>
+                                                <template v-for="(tick, index) in getTickCandlesVolume[item]" :key="index">
+                                                    <td :style="getBorders(index, 'left', item, tick.Sell, 'volume')">
+                                                        <span v-if="tick.Sell" :style="getImbalance('sell', tick.SellPer)">[[ roundData(tick.Sell) ]]</span>
+                                                    </td>
+                                                    <td :style="getBorders(index, 'right', item, tick.Buy, 'volume')">
+                                                        <span v-if="tick.Buy" :style="getImbalance('buy', tick.BuyPer)">[[ roundData(tick.Buy) ]]</span>
+                                                    </td>
+                                                </template>
+                                                <th class="text-warning" scope="row"> [[item]] </th>
+                                            </tr>
+                                </template>
+
+                                <template>
+                                    <tr>
+                                        <td> - </td>
+                                        <template v-for="(item, key) in getOFTableVolume" :key="key" >
+                                                <td colspan="2" class="text-warning"></td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    </tr>
+
+                                    <tr>
+                                        <td>Time</td>
+                                        <template v-for="(item, key) in getOFTableVolume" :key="key" >
+                                                <td colspan="2" class="text-warning"> [[getTime(item.timestamp, 'v')]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>Sec</td>
+                                        <template v-for="(item, key) in getOFTableVolume" :key="key" >
+                                            <td colspan="2" :style="timeStyle(item.time_delta)">[[calculateTime(item.time_delta)]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>Vol</td>
+                                        <template v-for="(item, key) in getOFTableVolume" :key="key" >
+                                            <td colspan="2"  :style="getVolumeStyle(item.pva_status, key, item.price_delta)">[[roundData(item.total)]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td  @click="showDelta = !showDelta" >%</td>
+                                        <template v-for="(item, key) in getOFTableVolume" :key="key" >
+                                            <td colspan="2"   :style="getDeltaStyle(item.delta, 0, item.total)">[[getPercent(item.delta, item.total)]]%</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr v-if="showDelta">
+                                        <td>Delta</td>
+                                        <template v-for="(item, key) in getOFTableVolume" :key="key" >
+                                            <td colspan="2"  :style="getDeltaStyle(item.delta, 0, item.total)">[[roundData(item.delta, item.total)]]</td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>OI</td>
+                                        <template v-for="(item, key) in getOFTableVolume" :key="key" >
+                                            <td colspan="2" :style="getOIStyle(item.oi_delta)">[[roundData(item.oi_delta)]] </td>
+                                        </template>
+                                        <td></td>
+                                    </tr>
+                                </template>
+
+                                <template v-if="flowPositionVol == 2" v-for="(item, key) in getTicksReversedVolume" :key="key" >
+                                    <tr :style="getCurrent(item)">
+                                        <th class="text-warning" scope="row"> [[item]] </th>
+                                        <template v-for="(tick, index) in getTickCandlesVolume[item]" :key="index">
+                                            <td :style="getBorders(index, 'left', item, tick.Sell, 'volume')">
+                                                <span v-if="tick.Sell" :style="getImbalance('sell', tick.SellPer)">[[ roundData(tick.Sell) ]]</span>
+                                            </td>
+                                            <td :style="getBorders(index, 'right', item, tick.Buy, 'volume')">
+                                                <span v-if="tick.Buy" :style="getImbalance('buy', tick.BuyPer)">[[ roundData(tick.Buy) ]]</span>
+                                            </td>
+                                        </template>
+                                        <th class="text-warning" scope="row"> [[item]] </th>
+                                    </tr>
+                                </template>
+
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+
+                <div v-if="showTable != 'Notes' && coin == 'BTC'" class="mt-3">
+                    <div class="border border-success text-success rounded pt-2 pb-1" style="text-align:center"  >
+                        <h3> <span @click="dbcount = parseInt(dbcount) + parseInt(100)"> Delta </span> <span @click="dbcount = 100 "> Blocks </span>
+                            <br>
+                            <input type="number" step="100" style="width:90px;background:black;color:green;" v-model="dbcount"> </input>
+                        </h3>
+                    </div>
+                    <table style="display:none" class="table table-dark table-sm vert">
+                        <thead class="vert">
+                            <tr class="vert" >
+                                <th class="vert p-1"  style="width:10%">Time</th>
+                                <th class="vert p-1" >Sec</th>
+                                <th class="vert p-1" >Vol</th>
+                                <th class="vert p-1"  @click="showDelta = true">Delta</th>
+                                <th class="vert p-1" >OI</th>
+                                <th class="vert p-1" >Candle</th>
+                                <th class="vert p-1"  style="width:2%">High</th>
+                                <th class="vert p-1"  style="width:2%">Close</th>
+                                <th class="vert p-1"  style="width:2%">Low</th>
+                            </tr>
+                        </thead>
+                        <tbody class="vert" id='volTableVert' :style="getVerticalTable()">
+                            <template v-for="(item, key) in getDeltaBlocksVert" :key="key" >
+                            <tr class="vert">
+                                <th class="vert text-success text-xsmall" scope="row"><span>[[getTime(item.timestamp, 'v')]] &nbsp &nbsp &nbsp</span> </th>
+                                <td class="vert" :style="timeStyle(item.time_delta)">[[calculateTime(item.time_delta)]]</td>
+                                <td class="vert" :style="getVolumeDivStyle(item.price_delta, item.delta, item)">[[roundData(item.total)]]</td>
+                                <td class="vert" :style="getDeltaStyle(item.delta, 0, item.total)">[[getPercent(item.delta, item.total)]]%</td>
+                                <td class="vert" :style="getOIStyle(item.oi_delta)">[[roundData(item.oi_delta)]]</td>
+                                <td class="vert" :style="getCandleStyle(item.open, item.close)">[[item.price_delta]] </span></td>
+                                <td class="vert">[[item.high]]</td>
+                                <td :style="getCloseStyle(item.close, key, 'volume')">[[item.close]]</td>
+                                <td class="vert">[[item.low]]</td>
+                            </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div v-if="showTable != 'Notes' && user" >
+                        <table class="table table-dark vert" class="table-responsive">
+                            <thead>
+                            <tr>
+                                <th scope="col" style="width:10%">Side</th>
+                                <th scope="col">Test</th>
+                                <th scope="col">Price</th>
+                                <th scope="col">Swing</th>
+                                <th scope="col">Active</th>
+                                <th scope="col">Stop</th>
+                                <th scope="col">Profit</th>
+                                <th scope="col">Fraction</th>
+                                <th scope="col">Backup</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th class="text-success" scope="row"><span @click="deltaEdit = !deltaEdit">Sell (Hi)</span> </th>
+                                    <td ><input type="number" maxlength="6" size="6" class="mb-2" style="width:100px;background:firebrick;color:white;font-size:15px" v-model="deltaswitchOBJ['Sell']['price']"> </input> </td>
+                                    <td >[[  coinOBJ['BTC']['deltaswitch']['Sell']['price']  ]] </td>
+                                    <td :style="getSwing(coinOBJ[coin]['deltaswitch']['Sell']['swing'])">[[  coinOBJ['BTC']['deltaswitch']['Sell']['swing']  ]] </td>
+                                    <td :style="getSwing(coinOBJ[coin]['deltaswitch']['Sell']['active'])">[[  coinOBJ['BTC']['deltaswitch']['Sell']['active']  ]] </td>
+                                    <td> <span v-if="!deltaEdit"> [[  coinOBJ['BTC']['deltaswitch']['Sell']['stop']  ]] </span> <span v-else> <input type="number" step="10" class="mb-2" style="width:60px;background:firebrick;color:white;font-size:15px" v-model="deltaswitchOBJ['Sell']['stop']"></input></span> </td>
+                                    <td> <span v-if="!deltaEdit"> [[  coinOBJ['BTC']['deltaswitch']['Sell']['profit']  ]] </span> <span v-else> <input type="number" step="10" class="mb-2" style="width:60px;background:green;color:white;font-size:15px" v-model="deltaswitchOBJ['Sell']['profit']"></input></span> </td>
+                                    <td> <span v-if="!deltaEdit"> [[  coinOBJ['BTC']['deltaswitch']['Sell']['fraction']  ]] </span> <span v-else> <input type="number" step="0.1" class="mb-2" style="width:60px;background:grey;color:white;font-size:15px" v-model="deltaswitchOBJ['Sell']['fraction']"></input></span> </td>
+                                    <td> <span v-if="!deltaEdit"> [[  coinOBJ['BTC']['deltaswitch']['Sell']['backup']  ]] </span> <span v-else> <input type="number" class="mb-2" style="width:100px;background:grey;color:white;font-size:15px" v-model="deltaswitchOBJ['Sell']['backup']"></input></span> </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-success" scope="row"><span @click="deltaEdit = !deltaEdit">Buy (Lo)</span> </th>
+                                    <td ><input type="number" maxlength="6" size="6" class="mb-2" style="width:100px;background:green;color:white;font-size:15px" v-model="deltaswitchOBJ['Buy']['price']"> </input> </td>
+                                    <td >[[  coinOBJ['BTC']['deltaswitch']['Buy']['price']  ]] </td>
+                                    <td :style="getSwing(coinOBJ[coin]['deltaswitch']['Buy']['swing'])">[[  coinOBJ['BTC']['deltaswitch']['Buy']['swing']  ]] </td>
+                                    <td :style="getSwing(coinOBJ[coin]['deltaswitch']['Buy']['active'])">[[  coinOBJ['BTC']['deltaswitch']['Buy']['active']  ]] </td>
+                                    <td> <span v-if="!deltaEdit"> [[  coinOBJ['BTC']['deltaswitch']['Buy']['stop']  ]] </span> <span v-else> <input type="number" step="10" class="mb-2" style="width:60px;background:firebrick;color:white;font-size:15px" v-model="deltaswitchOBJ['Buy']['stop']"></input></span> </td>
+                                    <td> <span v-if="!deltaEdit"> [[  coinOBJ['BTC']['deltaswitch']['Buy']['profit']  ]] </span> <span v-else> <input type="number" step="10" class="mb-2" style="width:60px;background:green;color:white;font-size:15px" v-model="deltaswitchOBJ['Buy']['profit']"></input></span> </td>
+                                    <td> <span v-if="!deltaEdit"> [[  coinOBJ['BTC']['deltaswitch']['Buy']['fraction']  ]] </span> <span v-else> <input type="number" step="0.1"class="mb-2" style="width:60px;background:grey;color:white;font-size:15px" v-model="deltaswitchOBJ['Buy']['fraction']"></input></span> </td>
+                                    <td> <span v-if="!deltaEdit"> [[  coinOBJ['BTC']['deltaswitch']['Buy']['backup']  ]] </span> <span v-else> <input type="number" class="mb-2" style="width:100px;background:grey;color:white;font-size:15px" v-model="deltaswitchOBJ['Buy']['backup']"></input> <input type="number" class="mb-2" style="width:30px;background:black;color:yellow;font-size:15px" v-model="deltaswitchOBJ['fcCheck']"></input> <button @click="setPrices('deltaswitch')" type="button" class="btn btn-sm btn-secondary" data-bs-toggle="button" autocomplete="off">--</button> </span></td>
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+                    </div>
+                    <div v-if="showTable != 'Notes'" class="table-responsive" style="height:600px">
+                        <table class="table table-dark table-sm horiz">
+                            <thead>
+                            <tr>
+                                <th scope="col" style="width:10%">Time</th>
+                                <th scope="col">Sec</th>
+                                <th scope="col">Vol</th>
+                                <th scope="col"> %</th>
+                                <th scope="col" style="width:2%">High</th>
+                                <th scope="col" style="width:2%">Close</th>
+                                <th scope="col" style="width:2%">Low</th>
+
+                                <th scope="col" align="right">OI</th>
+                                <th scope="col" align="right">DELTA</th>
+                                <th scope="col" >TC</th>
+                                <th scope="col" >Sells</th>
+                                <th scope="col" >Buys</th>
+
+
+                            </tr>
+                            </thead>
+                            <tbody>
+                                <template v-for="(item, key) in getReverseDeltaBlocks" :key="key" >
+                                <tr>
+                                    <th class="text-success" :style="trueStyleDelta(item.switch, key)" scope="row"><span @click="showDeltaCandleToggle(key)">[[getTime(item.timestamp)]]</span> </th>
+                                    <td :style="timeStyleDelta(item.time_delta, key)">[[calculateTime(item.time_delta)]]</td>
+                                    <td :style="getDeltaVolumeBlockStyle(item, key, item.price_delta)">[[roundData(item.total)]]</td>
+                                    <td :style="getDeltaStyle(item.delta, 0, item.total)">[[getPercent(item.delta, item.total)]]%</td>
+                                    <td :style="getLevel(item.high)"> [[item.high]]</td>
+                                    <td :style="getLevel(item.close, item.high, item.low, getPercent(item.delta, item.total))">[[item.close]]</td>
+                                    <td :style="getLevel(item.low)">[[item.low]]</td>
+                                    <td :style="getOIStyle(item.oi_delta)">[[roundData(item.oi_delta)]]</td>
+                                    <td align="right"> <span v-if="item.delta == 100000 || item.delta == -100000"> -- </span> <span v-else> [[item.delta]] </span> </td>
+                                    <td  >[[item.tradecount]]</td>
+                                    <td  >[[roundData(item.sells)]]</td>
+                                    <td  >[[roundData(item.buys)]]</td>
+
+
+
+                                </tr>
+
+                                <template v-if="showDeltaCandle == key">
+                                    <tr>
+                                        <td colspan="7">
+                                            <span>
+                                                [[item]]
+                                            </span>
+                                        </td>
+                                    </tr>
+
+                                </template>
+
+                                </template>
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+
+
+                <div v-if="showTable == 'Time'" align="center" class="mt-3">
+
+                    <div class="border border-info rounded pt-2 pb-1 text-info" >
+                        <h3> <span> Time Blocks ([[timeBlockSize]]) </span>
+                                <span @click="setTime(+1)" class="ml-2" >&#8593</span>
+                                <span @click="setTime(-1)" class="ml-2">&#8595</span>
+                        </h3>
+                    </div>
+
+                </div>
+
+                <div v-if="showTable != 'Notes'" class="table-responsive" style="height:600px">
+                    <table class="table table-dark table-sm horiz">
+                        <thead>
+                        <tr>
+                            <th scope="col" style="width:10%">Time</th>
+                            <th scope="col">Sec</th>
+                            <th scope="col">Vol</th>
+                            <th scope="col" @click="showDelta = true">Delta <span v-if="showDelta == false && !mobile" @click="showDelta = true"> &#x2192 </span></th>
+                            <th v-if="showDelta" scope="col" @click="showDelta = false"> &#x2190</th>
+                            <th v-if="showDelta" scope="col">Sells</th>
+                            <th v-if="showDelta" scope="col">Buys</th>
+                            <th scope="col">CVD</th>
+                            <th scope="col">OI</th>
+                            <th scope="col">Candle</th>
+                            <th scope="col" style="width:2%">High</th>
+                            <th scope="col" style="width:2%">Low</th>
+                            <th scope="col" style="width:2%">Close</th>
+                        </tr>
+                        </thead>
+                        <tbody v-if="showTable == 'Time'" id='timeTable'>
+                            <template v-for="(item, key) in getReverseTimeBlocks" :key="key" >
+                                <tr v-if="key < timeBlockList">
+                                    <th class="text-info" scope="row"><span @click="showTimeCandleToggle(key)">[[getTime(item.timestamp)]]</span> </th>
+                                    <td>[[calculateTime(item.time_delta)]]</td>
+                                    <td :style="getVolumeStyle(item.pva_status, key, item.price_delta, item.price_delta)">[[roundData(item.total)]]</td>
+                                    <td :style="getDeltaStyle(item.delta, 0, item.total)">[[roundData(item.delta, item.total)]]</td>
+                                    <td v-if="showDelta"  :style="getDeltaStyle(item.delta, 0, item.total)">[[getPercent(item.delta, item.total)]]%</td>
+                                    <td v-if="showDelta"  :style="getDeltaStyle(item.sells, -1)">[[roundData(item.sells)]]</td>
+                                    <td v-if="showDelta" :style="getDeltaStyle(item.buys, 1)">[[roundData(item.buys)]]</td>
+                                    <td :style="getCVDStyle(item.divergence, key, item.delta_cumulative, 'time')">[[roundData(item.delta_cumulative)]]</td>
+                                    <td :style="getOIStyle(item.oi_delta)">[[roundData(item.oi_delta)]]  <span v-if="showTable == 'Time' && timeBlockSize == 5">([[roundData(item.oi_range)]])</span></td>
+                                    <td :style="getCandleStyle(item.open, item.close)" align="right">[[item.price_delta]] <span v-if="!mobile"> / ([[getRange(item.high, item.low)]]) </span></td>
+                                    <td :style="getLocal('high', key)">[[item.high]]</td>
+                                    <td :style="getLocal('low', key)">[[item.low]]</td>
+                                    <td :style="getCloseStyle(item.close, key, 'time')">[[item.close]]</td>
+                                </tr>
+                                <template v-if="showTimeCandle == key">
+                                    <tr >
+                                        <td colspan="7">
+                                            <span>
+                                                [[item]]
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </template>
+                        </tbody>
+                        <tbody v-if="showTable == 'Volume'">
+                            <template v-for="(item, key) in getReverseVolumeBlocks" :key="key" >
+                            <tr>
+                                <th class="text-warning text-xsmall" scope="row"><span @click="showCandleToggle(key)">[[getTime(item.timestamp)]]</span> </th>
+                                <td :style="timeStyle(item.time_delta)">[[calculateTime(item.time_delta)]]</td>
+                                <td :style="getVolumeStyle(item.pva_status, key, item.price_delta)">[[roundData(item.total)]]</td>
+                                <td :style="getDeltaStyle(item.delta, 0, item.total)">[[getPercent(item.delta, item.total)]]%</td>
+                                <td v-if="showDelta"  :style="getDeltaStyle(item.delta, 0, item.total)">[[roundData(item.delta, item.total)]]</td>
+                                <td v-if="showDelta"  :style="getDeltaStyle(item.sells, -1)">[[roundData(item.sells)]]</td>
+                                <td v-if="showDelta"  :style="getDeltaStyle(item.buys, 1)">[[roundData(item.buys)]]</td>
+                                <td :style="getCVDStyle(item.divergence, key, item.delta_cumulative, 'vol')">[[item.delta_cumulative]]</td>
+                                <td style="display:none">[[item.oi_cumulative]]</td>
+                                <td :style="getOIStyle(item.oi_delta)">[[roundData(item.oi_delta)]]</td>
+                                <td :style="getCandleStyle(item.open, item.close)" align="right">[[item.price_delta]] <span v-if="!mobile">/ ([[getRange(item.high, item.low)]]) </span></td>
+                                <td>[[item.high]]</td>
+                                <td>[[item.low]]</td>
+                                <td :style="getCloseStyle(item.close, key, 'volume')">[[item.close]]</td>
+                            </tr>
+                            </template>
+                        </tbody>
+
+                    </table>
+                </div>
+
+                <div class="p-3">
+
+                    <!-- TradingView Widget BEGIN -->
+                    <div class="tradingview-widget-container">
+                        <div id="tradingview_2c4c6">
+
+                        </div>
+                    </div>
+                    <!-- TradingView Widget END -->
+                </div>
+
+
+            </div>
+
+
+
+        </div> <!-- end vue app-->
+
+    </main>
+</body>
+
+{% block script %}
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+
+
+<script type="text/javascript">
+
+
+var report = navigator.userAgent
+//console.log(report)
+
+let mobile = false
+
+if (report.includes('Android') || report.includes('iPhone') ) {
+    mobile = true
+    //console.log('mobile')
+}
+
+startVue()
+
+function startVue(){
+
+let vue = new Vue({
+
+    el: '#vue-app',
+    delimiters: ['[[', ']]'],
+    mounted: function() {
+        this.ofTimer()
+        this.getOFData()
+
+        if (mobile) {
+            this.mobile = true
+        }
+        if (localStorage['UTC']) {
+            this.UTCadjust = localStorage['UTC']
+        }
+        if (localStorage['imbalance']) {
+            this.imbalance = parseInt(localStorage['imbalance'])
+        }
+        if (localStorage['showChart']) {
+            this.showChart = parseInt(localStorage['showChart'])
+        }
+        if (localStorage['flowPositionVol']) {
+            this.flowPositionVol = parseInt(localStorage['flowPositionVol'])
+        }
+        if (localStorage['flowPositionTime']) {
+            this.flowPositionTime = parseInt(localStorage['flowPositionTime'])
+        }
+        if (localStorage['lookback']) {
+            this.lookback = parseInt(localStorage['lookback'])
+        }
+        if (localStorage['tickLookback']) {
+            this.tickLookback = parseInt(localStorage['tickLookback'])
+        }
+        if (!this.lookback || this.lookback == 'NaN') {
+            this.lookback = 4
+        }
+        //this.tradingView()
+
+    },
+    data: {
+        timerMilli: 3000,
+        oiPercent: true,
+        volumeEdit: false,
+        deltaEdit: false,
+        dbcount: 100,
+        deltaswitchOBJ: {},
+        volswitchOBJ: {},
+        flowPositionVol: 2,
+        flowPositionTime: 2,
+        OIchart: 100,
+        CVDchart: 200,
+        tickLookback: 20,
+        lookback : 4,
+        showChart : 1,
+        UTCadjust : 0,
+        imbalance : 369,
+        coin : 'BTC',
+        coins : ['BTC', 'ETH'],
+        coinOBJ : false,
+        history : {},
+        showTable : 'Time',
+        showDelta : true,
+        showCandle : null,
+        showTimeCandle : null,
+        showDeltaCandle : null,
+        showVolCandle : null,
+        user : true,
+        login : true,
+        mobile : false,
+        volumeBlocks : [],
+        volumeBlocks2 : [],
+        timeBlocks : [],
+        historyTime : [],
+        deltaBlocks : [],
+        deltaFlow : [],
+        stream : {},
+        lastAlertTime: null,
+        alertOn : true,
+        showAlerts : false,
+        volumeBlockList : 20,
+        volumeBlockSize : 5,
+        timeBlockList : 100,
+        timeMarker : 0,
+        timeBlockSize : 5,
+        timeSizes : [5,15,30,60],
+        of_timer : '',
+        ofAlert : 0,
+        localHigh : 0,
+        localLow : 0,
+        tpElement: '',
+        tpClear: '',
+        stopClear: '',
+        stopElement: '',
+        optionsP : {
+            showPoint: false,
+            showLine: true,
+            showArea: false,
+            lineSmooth: false,
+            showLabel: false,
+            axisX: {
+                showGrid: false,
+                showLabel: false,
+                scaleMinSpace: 20,
+                offset: 0
+              },
+            axisY: {
+                offset: 0,
+                scaleMinSpace: 40,
+                showGrid: true,
+                showLabel: false
+              }
+        },
+        optionsV : {
+            seriesBarDistance: 10,
+            showLabel: false,
+            axisX: {
+                showGrid: false,
+                showLabel: false,
+                scaleMinSpace: 20,
+                offset: 0
+              },
+            axisY: {
+                offset: 0,
+                scaleMinSpace: 40,
+                showGrid: true,
+                showLabel: false
+              }
+          }
+    },
+    methods: {
+        tradingView: function () {
+            new TradingView.widget(
+                    {
+                    "autosize" : false,
+                    "width": '100%',
+                    "height": 610,
+                    "hide_side_toolbar": true,
+                    "hide_top_toolbar": true,
+                    "symbol": "BYBIT:BTCUSD.P",
+                    "interval": "5",
+                    "timezone": "Asia/Taipei",
+                    "theme": "dark",
+                    "style": "1",
+                    "locale": "en",
+                    "toolbar_bg": "#f1f3f6",
+                    "enable_publishing": false,
+                    "hide_legend": false,
+                    "allow_symbol_change": true,
+                    "container_id": "tradingview_2c4c6",
+                    "studies": [
+                        "STD;Bollinger_Bands",
+                        "STD;VWAP",
+                        //"STD;Pivot%1Points%1Standard",
+                    ],
+                }
+            );
+        },
+        markPosition: function (key, index, side, item) {
+            if (!this.user) {
+                return false
+            }
+            console.log(key, index, side, item)
+            let eString = key + '_' + index + '_' + side + '_' + item
+            if (side == 'buy') {
+                if (this.tpElement == eString) {
+                    let elm = document.getElementById(this.tpElement)
+                    elm.innerHTML = ''
+                    elm.style.background = ''
+                    this.tpElement = ''
+                } else {
+                    this.tpClear = this.tpElement
+                    this.tpElement = eString
+                }
+            } else {
+                if (this.stopElement == eString) {
+                    let elm = document.getElementById(this.stopElement)
+                    elm.innerHTML = ''
+                    elm.style.background = ''
+                    this.stopElement = ''
+                } else {
+                    this.stopClear = this.stopElement
+                    this.stopElement = eString
+                }
+            }
+        },
+        setChartHeight: function (mode) {
+            if (this[mode] != 500) {
+                this[mode] += 100
+            } else {
+                this[mode] = 100
+            }
+        },
+        getChartHeight: function (mode) {
+            let h = this[mode] + 'px'
+            return {height:h}
+        },
+        goTo: function(link){
+
+
+            var str = window.location.href
+
+            let url = str + link
+
+            //console.log('goTO', url);
+            window.location = url
+
+        },
+        getBorders: function (key, side, tick, order, mode) {
+
+            let modes = {
+                time : {
+                    blocks : this.getTimeBlocks,
+                    green : ' #00695C'
+                },
+                volume : {
+                    blocks : this.getVolumeBlocks,
+                    green : ' #9E9D24'
+                }
+            }
+
+            let close = 0
+            let open = 0
+            let color = modes[mode]['green']
+
+            let candle = 'green'
+
+            let block = modes[mode]['blocks'].slice(-this.tickLookback)[key]
+
+            if (block) {
+                if (block['price_delta'] < 0) {
+                    color = '#641E16'
+                    candle = 'red'
+                }
+                close = block['close']
+                open = block['open']
+
+            }
+
+            if (block && block.volDiv && this.user) {
+                if (candle == 'red') {
+                    color = ' hotpink'
+                } else {
+                    color = ' aqua'
+                }
+            }
+
+            let candleKey = side + '-' + candle
+
+            let sides = {
+                'left-red-bottom' : {'border-left': 'solid 5px' + color, 'border-bottom': 'solid 5px' + color},
+                'left-red-top' : {'border-left': 'solid 5px' + color, 'border-top': 'solid 5px' + color },
+
+                'left-green-top' : {'border-left': 'solid 5px' + color, 'border-bottom': 'solid 5px' + color },
+                'left-green-bottom' : {'border-left': 'solid 5px' + color, 'border-top': 'solid 5px' + color },
+
+                'left-square' : {'border-left': 'solid 5px' + color, 'border-top': 'solid 5px' + color, 'border-bottom': 'solid 5px' + color },
+                'right-square' : {'border-right': 'solid 5px' + color, 'border-top': 'solid 5px' + color, 'border-bottom': 'solid 5px' + color },
+
+                'left-side' : {'border-left': 'solid 5px' + color},
+                'left-oside' : {'border-right': 'solid 5px' + color},
+
+                'right-red-top' : {'border-right': 'solid 5px' + color, 'border-top': 'solid 5px' + color },
+                'right-red-bottom' : {'border-right': 'solid 5px' + color, 'border-bottom': 'solid 5px' + color },
+
+                'right-green-bottom' : {'border-right': 'solid 5px' + color, 'border-top': 'solid 5px' + color },
+                'right-green-top' : {'border-right': 'solid 5px' + color, 'border-bottom': 'solid 5px' + color },
+
+                'right-side' : {'border-right': 'solid 5px' + color},
+                'right-oside' : {'border-left': 'solid 5px' + color},
+            }
+
+            tickOBJ = {
+                BTC : {
+                    'close' : (Math.floor(close/10))*10,
+                    'open' : (Math.floor(open/10))*10
+                },
+                ETH : {
+                    'close' : (Math.floor(close)),
+                    'open' : (Math.floor(open))
+                }
+            }
+
+            let closeTick = tickOBJ[this.coin]['close']
+            let openTick = tickOBJ[this.coin]['open']
+
+            //console.log(closeTick, openTick)
+
+            let bStyle = {}
+
+
+            if (closeTick == tick && openTick == tick) {
+                bStyle = sides[side + '-square']
+            } else if (closeTick == tick) {
+                bStyle = sides[candleKey + '-bottom']
+            } else if (openTick == tick) {
+                bStyle = sides[candleKey + '-top']
+            } else if (candle == 'green' && tick > openTick && tick < closeTick ) {
+                bStyle = sides[side + '-side']
+            } else if (candle == 'red' && tick < openTick && tick > closeTick ) {
+                bStyle = sides[side + '-side']
+            } else if (order){
+                bStyle = sides[side + '-oside']
+            }
+
+            if (block && block.vwapTick && block.vwapTick == tick) {
+                bStyle['background'] = '#455A64'
+            }
+
+            vsSellTick = (Math.floor(this.volswitchOBJ['Sell']['price']/10))*10
+            vsBuyTick = (Math.floor(this.volswitchOBJ['Buy']['price']/10))*10
+
+            dsSellTick = (Math.floor(this.deltaswitchOBJ['Sell']['price']/10))*10
+            dsBuyTick = (Math.floor(this.deltaswitchOBJ['Buy']['price']/10))*10
+
+            if (mode == 'volume' && tick == vsSellTick) {
+                bStyle['background'] = '#922B21'
+            } else if (mode == 'volume' && tick == vsBuyTick) {
+                bStyle['background'] = '#1D8348 '
+            } else if (mode == 'time' && tick == dsBuyTick) {
+                bStyle['background'] = '#1D8348 '
+            } else if (mode == 'time' && tick == dsSellTick) {
+                bStyle['background'] = '#1D8348 '
+            }
+
+            return bStyle
+
+        },
+        getSwing: function (bool) {
+            //console.log(bool)
+            if (bool) {
+                return {color:'springgreen'}
+            } else {
+                return {color:'hotpink'}
+            }
+        },
+        getCurrent: function (price) {
+            let pFloor = Math.floor(this.stream['lastPrice']/10)*10
+
+            if (price == pFloor.toString()) {
+                return {background:'#212F3C'}
+            }
+        },
+        getImbalance: function (side, per) {
+
+
+            if (this.timeBlockSize > 5) {
+                return false
+            }
+            //console.log(side, per)
+            let colors ={
+                sell : {background:'red'},
+                buy : {background:'green'}
+            }
+
+            if (per > this.imbalance) {
+                return colors[side]
+            }
+
+        },
+        getVerticalTable: function () {
+            if (!this.mobile) {
+                return {width:'800px'}
+            } else {
+                return {width:'300px'}
+            }
+        },
+        getRange: function (high, low) {
+            let abs = Math.abs(high - low)
+
+            let c = {
+                BTC : 1,
+                ETH : 100,
+                GALA : 10000
+            }
+            return Math.round(abs*c[this.coin])/c[this.coin]
+        },
+        toggleCoin: function () {
+            let x = this.coins.indexOf(this.coin)
+
+            let n = x + 1
+            if (n > this.coins.length - 1) {
+                n = 0
+            }
+
+            this.coin = this.coins[n]
+        },
+        audioAlert: function () {
+            if (this.alertOn == false) {
+                return false
+            }
+
+            console.log(document.getElementById('xyz'))
+
+            let lastAlert = this.stream['alerts'][0]
+
+            let audio = "https://rekt-journal.s3.ap-northeast-1.amazonaws.com/software.wav"
+
+            if (lastAlert && lastAlert[1].includes('CVD')) {
+                audio = "https://rekt-journal.s3.ap-northeast-1.amazonaws.com/atm.wav"
+            } else if (lastAlert && lastAlert[1].includes('Trade')) {
+                audio = "https://rekt-journal.s3.ap-northeast-1.amazonaws.com/game.wav"
+            }
+
+            document.getElementById('xyz').src = audio
+            document.getElementById('xyz').play()
+        },
+        getAlert: function (mode, key) {
+            //console.log(this.stream['alerts'] )
+
+
+            let requestAlert = null
+            if (this.stream['alerts'] && this.stream['alerts'][key]) {
+                requestAlert = this.stream['alerts'][key]
+            }
+
+            if (requestAlert && mode == 'note' ) {
+                if (requestAlert[0]) {
+                    let alert =  this.getTime(requestAlert[0]) + ' ' + requestAlert[1]
+                    return alert
+                }
+            } else if (requestAlert && mode == 'info' ) {
+                if (requestAlert[2]) {
+                    let notice = requestAlert[1]
+                    let alert = requestAlert[2]
+
+                    if (notice.includes('CVD')) {
+                        if (alert.includes('Bull')) {
+                            return 'Potential Bullish Divergence Occuring'
+                        }
+                        if (alert.includes('Bear')) {
+                            return 'Potential Bearish Divergence Occuring'
+                        }
+                    } else if (notice.includes('Trade')) {
+                        return alert
+                    } else {
+                        return alert
+                    }
+                }
+            } else {
+                return 'No Alert'
+            }
+
+        },
+        showDeltaCandleToggle: function (key) {
+            //console.log(key)
+            if (this.showDeltaCandle == key) {
+                this.showDeltaCandle = null
+            } else {
+                this.showDeltaCandle = key
+            }
+        },
+        showTimeCandleToggle: function (key) {
+            //console.log(key)
+            if (this.showTimeCandle == key) {
+                this.showTimeCandle = null
+            } else {
+                this.showTimeCandle = key
+            }
+        },
+        showCandleToggle: function (key) {
+            //console.log(key)
+            if (this.showCandle == key) {
+                this.showCandle = null
+            } else {
+                this.showCandle = key
+            }
+        },
+        getManualLookback: function (key) {
+            let newKey = this.getTimeBlocks.length - key
+            let tableTotal = this.getTimeBlocks.length
+            let totalTotal = this.timeBlocks.length
+            let index = tableTotal - newKey
+            //console.log(index, key)
+
+            this.lookback = Math.round((index/totalTotal)*100)
+        },
+        setLookBack: function (n) {
+
+            let blockHours = (this.timeBlocks.length * this.timeBlockSize) / 60
+
+            //console.log(n, this.lookback)
+
+            if (this.lookback == 2 && n == -2) {
+               return false
+            } else if (this.lookback + n > blockHours) {
+                return false
+            } else {
+                this.lookback += n
+            }
+
+        },
+        updateCharts: function () {
+            let blockOBJ = {
+                Time : this.timeBlocks,
+                Volume : this.volumeBlocks
+            }
+
+            if (!blockOBJ[this.showTable]) {
+                //console.log('no tables')
+                return false
+            }
+
+            let blocks = this.timeBlocks
+
+            let labels = []
+
+            let seriesP = [[],[],[]]
+            let seriesD = [[],[],[]]
+            let seriesO = [[],[],[]]
+            let seriesV = [[],[],[],[]]
+
+            let total = blocks.length
+
+            let blockHours = (this.timeBlocks.length * this.timeBlockSize) / 60
+
+            let percent = this.lookback/blockHours
+
+            if (percent > 1) {
+                // in case there are less than 2 hours of data
+                percent = 1
+                this.lookback = 2
+            }
+
+            let cutoff = total - (total * percent)
+
+            for (let tb in blocks) {
+                if (tb > cutoff) {
+                    labels.push(tb)
+                    seriesP[0].push(blocks[tb]['close'])
+                    seriesD[1].push(blocks[tb]['delta_cumulative'])
+                    if (blocks[tb]['oi_cumulative'] != 0) {
+                       seriesO[2].push(blocks[tb]['oi_cumulative'])
+                    }
+                    seriesV[3].push(blocks[tb]['total'])
+                }
+            }
+
+            dataP = { labels : labels, series : seriesP}
+            dataD = { labels : labels, series : seriesD}
+            dataO = { labels : labels, series : seriesO}
+            dataV = { labels : labels, series : seriesV}
+
+            new Chartist.Line('#chart1', dataP, this.optionsP);
+            new Chartist.Line('#chart2', dataD, this.optionsP);
+            new Chartist.Line('#chart3', dataO, this.optionsP);
+
+              var responsiveOptions = [
+                ['screen and (max-width: 640px)', {
+                  seriesBarDistance: 5,
+                  axisX: {
+                    labelInterpolationFnc: function (value) {
+                      return value[0];
+                    }
+                  }
+                }]
+              ];
+
+            new Chartist.Bar('#chart4', dataV, this.optionsV, responsiveOptions);
+
+        },
+        updateOFCharts: function () {
+            //console.log('chartActions')
+
+            let labelsT = []
+            let labelsV = []
+
+            let blocksTime = this.timeBlocks
+            let blocksVolume = this.volumeBlocks
+
+            let seriesDT = [[],[],[]]
+            let seriesOT = [[],[],[]]
+
+            let seriesDV = [[],[],[]]
+            let seriesOV = [[],[],[]]
+
+            let totalT = blocksTime.length
+            let totalV = blocksVolume.length
+
+            let lbt = this.tickLookback
+            let lbv = this.tickLookback
+
+            if (lbt > totalT) {
+                lbt = totalT
+            }
+
+            if (lbv > totalV) {
+                lbv = totalV
+            }
+
+            let cutoffT = totalT - lbt
+            let cutoffV = totalV - lbv
+
+
+            for (let blk in blocksTime) {
+                if (blk >= cutoffT) {
+                    labelsT.push(blk)
+                    seriesDT[1].push(blocksTime[blk]['delta_cumulative'])
+                    if (blocksTime[blk]['oi_cumulative'] != 0) {
+                       seriesOT[2].push(blocksTime[blk]['oi_cumulative'])
+                    }
+                }
+            }
+
+            for (let blk in blocksVolume) {
+                if (blk >= cutoffV) {
+                    labelsV.push(blk)
+                    seriesDV[1].push(blocksVolume[blk]['delta_cumulative'])
+                    if (blocksVolume[blk]['oi_cumulative'] != 0) {
+                       seriesOV[2].push(blocksVolume[blk]['oi_cumulative'])
+                    }
+                }
+            }
+
+            dataDT = { labels : labelsT, series : seriesDT}
+            dataOT = { labels : labelsT, series : seriesOT}
+            dataDV = { labels : labelsV, series : seriesDV}
+            dataOV = { labels : labelsV, series : seriesOV}
+
+            new Chartist.Line('#chart5', dataDT, this.optionsP);
+            new Chartist.Line('#chart6', dataOT, this.optionsP);
+            //new Chartist.Line('#chart7', dataDV, this.optionsP);
+            //new Chartist.Line('#chart8', dataOV, this.optionsP);
+            //new Chartist.Line('#chart7', dataO, this.optionsP);
+        },
+        setTime: function (n) {
+            this.timeMarker += n
+
+            if (this.timeMarker > 3 || this.timeMarker < 0) {
+                this.timeMarker = 0
+            }
+
+            this.timeBlockSize = this.timeSizes[this.timeMarker]
+
+        },
+        setTickLookBack: function (n) {
+
+            if (this.tickLookback + n > 100 || this.tickLookback + n < 10) {
+                this.tickLookback = 10
+            } else {
+                this.tickLookback += n
+            }
+        },
+        setVol: function (n) {
+            let sizes = this.coinOBJ[this.coin]['volume'][1]
+            let i = sizes.indexOf(this.volumeBlockSize)
+
+            if (this.volumeBlockSize == sizes.length - 1) {
+                this.volumeBlockSize = sizes[0]
+            } else {
+                this.volumeBlockSize = sizes[i+1]
+            }
+        },
+        getTickPrices: function (ticks, mode) {
+
+            let returnValues = {
+                price : [],
+                amount : []
+            }
+
+            for (let p in ticks) {
+                returnValues['price'].unshift(p)
+                returnValues['amount'].unshift(ticks[p])
+            }
+
+            return returnValues[mode]
+
+        },
+        getLocal: function (mode, key, vert) {
+            let sets = {
+                    high : this.localHigh,
+                    low : this.localLow,
+                }
+            let colors = {
+                    low : '#004D40',
+                    high : 'firebrick',
+                }
+
+            if (this.timeBlockSize == 5) {
+                if (key == sets[mode] + 1 && !vert) {
+                return { background: colors[mode]}
+                }
+                if (key == this.getTimeBlocks.length - sets[mode] - 2 && vert) {
+                return { background: colors[mode]}
+                }
+            }
+        },
+        getCVDStyle: function (CVDdivergence, key, CVD, mode) {
+            if (key == 1 && CVDdivergence && mode == 'time') {
+
+                if (CVDdivergence.lowInfo && CVDdivergence.lowInfo.index) {
+                    this.localLow = CVDdivergence.lowInfo.index
+                    this.localHigh = CVDdivergence.highInfo.index
+                    // console.log(this.localHigh , CVDdivergence.highInfo, this.localLow, CVDdivergence.lowInfo, CVD)
+                }
+            }
+
+            if (this.timeBlockSize == 5  && key != 0) {
+                if (CVDdivergence && CVDdivergence.highInfo && CVDdivergence.highInfo.div) {
+                    return {color: 'hotpink'}
+                } else if (CVDdivergence && CVDdivergence.highInfo && CVDdivergence.lowInfo.div) {
+                    return {color: '#0066FF'}
+                }
+            }
+
+            if (mode == 'time') {
+                let previousCandle =  this.getReverseTimeBlocks[key + 1]
+                if (previousCandle && CVD < previousCandle['delta_cumulative']) {
+                    return {color: '#E53935'}
+                } else if (previousCandle && CVD > previousCandle['delta_cumulative']) {
+                    return {color: 'lightgreen'}
+                }
+            }
+
+        },
+        getCloseStyle: function (close, key, mode) {
+
+            let candles = {
+                time : this.getReverseTimeBlocks[key + 1 ],
+                volume : this.getReverseTimeBlocks[key + 1 ],
+                delta : this.getReverseTimeBlocks[key + 1 ]
+            }
+
+            previousCandle = candles[mode]
+
+            if (previousCandle && close < previousCandle['close']) {
+                return {color: '#E53935'}
+            } else if (previousCandle && close > previousCandle['close']) {
+                return {color: 'lightgreen'}
+            }
+
+        },
+        getMargin: function () {
+            if (this.mobile) {
+                return "content-section"
+            } else {
+                return "content-section ml-5 mr-5"
+            }
+        },
+        getFont: function () {
+            if (this.mobile) {
+                return "font-size:12px"
+            }
+        },
+        getTime: function (t, v) {
+            let time = t.split(' ')
+            let adjust = this.UTCadjust
+            if (!parseInt(adjust)) {
+                adjust = 0
+            }
+            let hours = parseInt(time[1].split(':')[0]) + parseInt(adjust)
+            if (hours > 23) {
+                hours = hours - 24
+            }
+            let newTime = time[1].split(':')
+            let x = time[0] + ' '
+
+            if (this.mobile || v == 'v') {
+                return hours + ':' + newTime[1]
+            } else {
+                return hours + ':' + newTime[1] + ':' + newTime[2].split('.')[0]
+            }
+
+        },
+        roundData: function (data, total) {
+
+            if (total && this.oiPercent) {
+                return this.getPercent(data, total) + '%'
+            }
+            //deal with K
+            if (data >= 1000000 || data <= -1000000) {
+                let x = data/100000
+                let y = Math.round(x)
+                let r = y.toString()/10
+                return r + 'm'
+            } else {
+                let x = data/1000
+                let y = Math.round(x)
+                let r = y.toString()
+                return r + 'k'
+                if (r == '1000') {
+                    return '1m'
+                } else {
+                    return r + 'k'
+                }
+            }
+        },
+        getPercent: function (data, total) {
+            //deal with K
+            let x = (data/total)*100
+            let y = Math.round(x)
+            let r = y.toString()
+            return r
+        },
+        calculateTime: function (ms) {
+            return Math.round((ms/1000))
+        },
+        timeStyle: function (ms) {
+            if (Math.round((ms/1000)) <= 60) {
+                return {background: '#2C3E50' }
+            } else {
+                return {background: '#1B2631' }
+            }
+
+        },
+        timeStyleDelta: function (ms) {
+            if (Math.round((ms/1000)) < 5) {
+                return {background: '#2C3E50' }
+            } else {
+                return {background: '#1B2631' }
+            }
+        },
+        trueStyleDelta: function (bool) {
+
+            let colorOBJ = {
+                MO : 'orange',
+                MF : 'red',
+                SW : '#CCCCFF',
+                AT : 'aqua',
+                ATT : 'aqua',
+                ATC : 'springgreen',
+                AF : 'hotpink'
+            }
+
+            if (bool) {
+              return {background: colorOBJ[bool]}
+            }
+
+        },
+        getLevel: function (level, high, low, percent) {
+
+            if (high && low) {
+                let background = { }
+                if (level == high && level == low) {
+                    background['color'] = 'white'
+                } else if (level == high && percent < 0) {
+                    background['color'] = 'yellow'
+                } else if (level == low && percent > 0) {
+                    background['color'] = 'orange'
+                } else if (level == high && percent > 0) {
+                    background['color'] = 'red'
+                } else if (level == low && percent < 0 ) {
+                    background['color'] = 'green'
+                }
+                return background
+            }
+
+            // high and low variable only passed for close
+
+            let background = { background: null }
+
+            if (this.deltaswitchOBJ['Sell']['price'] > 0) {
+                if (level > this.deltaswitchOBJ['Sell']['price']) {
+                    background = { background: 'firebrick' }
+                }
+            }
+            if (this.deltaswitchOBJ['Buy']['price'] > 0) {
+                target = this.deltaswitchOBJ['Buy']['price']
+                if (level < target) {
+                    background =  {background: 'green' }
+                }
+            }
+
+            if (level == 26211) {
+                console.log(level, this.localHigh, this.getReverseTimeBlocks[this.localHigh + 1])
+            }
+
+            var getBlockHigh = this.getReverseTimeBlocks[this.localHigh + 1]
+            var getBlockLow = this.getReverseTimeBlocks[this.localLow + 1]
+
+            if (getBlockHigh && level == getBlockHigh['high']) {
+                background = { background: 'hotpink' }
+            } else if (getBlockLow && level == getBlockLow['low']) {
+                background = { background: 'springgreen' }
+            }
+
+            return background
+
+        },
+        getCandleStyle: function(open, close) {
+            let style = {color : '#E53935'}
+            if (open < close) {
+                style = {color : 'lightgreen'}
+            }
+            return style
+        },
+        getOIStyle: function(oi) {
+            let style = {background : '#303F9F', color : 'white'}
+            if (oi == 0) {
+                style = {}
+            } else if (oi < -1000000) {
+                style = {background : '#BA68C8', color : 'white'}
+            }else if (oi < 0) {
+                style = {background : 'purple', color : 'white'}
+            }else if (oi > 1000000) {
+                style = {background : 'DodgerBlue', color : 'white'}
+            }
+            return style
+        },
+        getDeltaStyle: function(delta, mode, total) {
+            // mode 0 is normal
+            // 1 is Buys
+            // -1 is Sells
+
+            let p = this.getPercent(delta, total)
+            let style = {background : '#1B2631'}
+            if (mode == 0) {
+                if (p < -80 ) {
+                    // Orange
+                    style = {background : '#FF6F00'}
+                } else if ( p < -40 ) {
+                    style = {background : '#EF6C00'}
+                } else if (p < 0) {
+                    style = {background : '#FB8C00'}
+                } else if (p > 80 ) {
+                    // Orange
+                    style = {background : '#00838F'}
+                } else if ( p > 40 ) {
+                    style = {background : '#0097A7'}
+                } else if (p > 0) {
+                    style = {background : '#00ACC1'}
+                }
+            } else if (mode < 0) {
+                if (delta > 5000000) {
+                   style = {background : '#795548'}
+                } else if (delta > 1000000) {
+                   style = {background : '#4E342E'}
+                }
+            } else if (mode > 0) {
+                if (delta > 5000000) {
+                   style = {background : '#455A64 '}
+                } else if (delta > 1000000) {
+                   style = {background : '#263238'}
+                }
+            }
+            return style
+        },
+        getVolumeStyle: function(pva_status, key, price) {
+
+            let style = {background : '#1B2631'}
+
+
+            if (pva_status['pva150']) {
+                if (price < 0) {
+                    //pink
+                    style = {background : '#880E4F'}
+                } else if (price > 0) {
+                    //dark green
+                    style = {background : '#004D40'}
+                }
+            } else if (pva_status['pva200']) {
+                if (price < 0) {
+                    //red
+                    style = {background : '#D81B60'}
+                } else if (price > 0) {
+                    //green
+                    style = {background : '#66CC00'}
+                } else if (price == 0) {
+                    //browns
+                    style = {background : '#922B21'}
+                }
+            }
+
+            if (this.user) {
+                if (pva_status['pva200'] && pva_status['PVAbearDIV']) {
+                    style = {background : '#BDBDBD' , color : '#D32F2F' }
+                } else if (pva_status['pva200'] && pva_status['PVAbullDIV']) {
+                    style = {background : '#BDBDBD' , color : 'green' }
+                }
+            }
+
+
+            return style
+        },
+        getVolumeDivStyle: function(price, delta, item) {
+
+            if (item.volDiv && item.volDiv) {
+                return {background : 'darkpurple'}
+            } else {
+                return false
+            }
+
+            let style = {}
+
+            if (price < 0 && delta > 0 ) {
+                //pink
+                style = {background : '#880E4F'}
+
+            } else if (price > 0 && delta < 0 ) {
+
+                style = {background : '#66CC00'}
+
+            }
+
+            if (this.user) {
+               return style
+            }
+        },
+        getVolumeBlockStyle: function(item, key, price) {
+
+            let style = {}
+
+            if (item.volcandle_two && item.volcandle_two['Bull']) {
+                style = {background: 'grey'}
+            }
+            if (item.volcandle_two && item.volcandle_two['Bear']) {
+                style = {background: 'grey'}
+            }
+
+            return style
+        },
+        getDeltaVolumeBlockStyle: function(item, key, price) {
+
+            let timeFast = Math.round((item.time_delta/1000)) < 5
+
+            let style = {}
+
+            if (item.total && item.total > 400000 && timeFast) {
+                style = {background: '#641E16'}
+            } else if (item.total && item.total > 400000) {
+                style = {background: '#273746'}
+            }
+
+            return style
+        },
+        ofTimer: function () {
+            this.of_timer = setInterval(this.getOFData, this.timerMilli)
+            //console.log('timer', this.of_timer)
+        },
+        clearOF: function () {
+            clearInterval(this.of_timer)
+        },
+        clearLimitPrice: function () {
+            this.limitData.price = 0
+        },
+        getOFData: function (mode) {
+            if (!this.coin) {
+                return false
+            }
+
+            //console.log('getOFData')
+
+            $.ajax({
+                data : {
+                    timeBlockSize: this.timeBlockSize,
+                    coin: this.coin
+                },
+                type : 'POST',
+                url : '/getOF'
+
+            })
+            .done(function(data) {
+                console.log('OF data received')
+
+                let cOBJ = JSON.parse(data.coinDict)
+
+                if (vue.user) {
+                    console.log(vue.coinOBJ)
+                }
+
+                let volumeblocksOBJ  = JSON.parse(data.volumeBlocks)
+
+                let volumeblocks = false
+                let volumeblocks2 = []
+
+                // console.log('volumeBlocks', volumeblocksOBJ)
+
+                volumeblocks = volumeblocksOBJ
+
+                vue.volumeBlocks = volumeblocks
+
+                vue.stream = JSON.parse(data.stream)
+
+                vue.timeBlocks = JSON.parse(data.timeBlocks)
+
+                vue.deltaBlocks = JSON.parse(data.deltaBlocks)
+                console.log('db len', vue.deltaBlocks.length)
+
+                if (vue.coinOBJ == false) {
+                    /// only act on page load
+                    vue.coinOBJ = cOBJ
+                    vue.deltaswitchOBJ = vue.coinOBJ[vue.coin]['deltaswitch']
+                    vue.volswitchOBJ = vue.coinOBJ[vue.coin]['volswitch']
+                } else {
+                    vue.coinOBJ = cOBJ
+                }
+
+                let tbf = document.getElementById('tbf')
+                if (tbf && tbf.scrollLeft == 0) {
+                    tbf.scrollLeft = tbf.scrollWidth
+                }
+
+                let vbf = document.getElementById('vbf')
+                if (vbf && vbf.scrollLeft == 0) {
+                    vbf.scrollLeft = vbf.scrollWidth
+                }
+
+                vScroll = true
+
+                let ev = document.getElementById('volTableVert')
+                if (ev) {
+                    if (ev.scrollLeft == 0 || vScroll) {
+                       ev.scrollLeft = ev.scrollWidth
+                    }
+                }
+
+                if (vue.showChart > 0) {
+                   vue.updateCharts()
+                }
+
+                if (vue.showChart == 2) {
+                    vue.updateOFCharts()
+                }
+
+                //vue.user = data.user
+
+                if (vue.user) {
+                    vue.coins = ['BTC', 'ETH']
+                } else {
+                    vue.coins = ['BTC']
+                }
+                //console.log('USER', data.user)
+
+                // vue.login = data.login
+                //console.log('LOGIN', data.login)
+
+            })
+            .fail(function(){
+                  console.log('error has occurred gData')
+                  //location.reload()
+            });
+        },
+        setPrices: function (mode) {
+
+            console.log('setPrices', vue.deltaswitchOBJ)
+            console.log('setVol', vue.volswitchOBJ)
+
+
+            let reset = false
+
+            let objects = {
+                'deltaswitch' :  vue.deltaswitchOBJ,
+                'volswitch' : vue.volswitchOBJ
+            }
+
+            let object = objects[mode]
+
+            for (let x in object) {
+                for (let y in object[x]) {
+                    if (isNaN(parseFloat(object[x][y]))) {
+                        object[x][y] = false
+                    } else {
+                        let float = parseFloat(object[x][y])
+                        object[x][y] = float
+                    }
+                }
+            }
+
+            this.coinOBJ[this.coin][mode] = object
+
+            if (vue.deltaswitchOBJ['Sell']['price'] == 0 && vue.deltaswitchOBJ['Buy']['price'] == 0) {
+                reset = true
+            }
+
+            $.ajax({
+                data : {
+                    coinOBJ: JSON.stringify(this.coinOBJ),
+                    coin: this.coin,
+                    reset: false
+                },
+                type : 'POST',
+                url : '/setPrices'
+
+            })
+            .done(function(data) {
+                console.log('DELTA data received', data)
+                vue.coinOBJ = JSON.parse(data.coinDict)
+
+            })
+            .fail(function(){
+                  console.log('error has occurred delta Data')
+                  //location.reload()
+            });
+        }
+    },
+    computed: {
+        getTicksReversedTime() {
+            const reversedTicks = Object.keys(this.getTickCandlesTime).reverse();
+            return reversedTicks
+        },
+        getTicksReversedVolume() {
+            const reversedTicks = Object.keys(this.getTickCandlesVolume).reverse();
+            return reversedTicks
+        },
+        getTickCandlesTime() {
+            let blocks = this.getReverseTimeBlocks
+
+            if (blocks.length == 0) {
+                return {}
+            }
+
+            let candleLookback = this.tickLookback
+            if (candleLookback > blocks.length) {
+                candleLookback = blocks.length
+            }
+
+            let candles = []
+            for (let i = 0; i < candleLookback; i++) {
+                if (blocks[i]) {
+                   candles.push(blocks[i]['tickList'])
+                }
+            }
+            // console.log('candles tick time', candles)
+
+            let tickOBJ = {}
+
+            for (let c in candles) {
+                for (let t in candles[c]) {
+                    let tick = candles[c][t]['tickPrice']
+                    if (!tickOBJ[tick]) {
+                        tickOBJ[tick] = []
+                    }
+                }
+            }
+            for (let tickLevel in tickOBJ) {
+                for (let i = 0; i < candleLookback; i++) {
+                    tickOBJ[tickLevel].push({})
+                }
+            }
+
+            for (let tickLevel in tickOBJ) {
+                for (let c in candles) {
+                    for (let t in candles[c]) {
+                        let info = candles[c][t]
+                        let tick = info['tickPrice']
+                        let candle = candleLookback - c - 1
+                        if (tickLevel == tick) {
+                            tickOBJ[tickLevel][candle] = info
+                        }
+                    }
+                }
+            }
+
+            return tickOBJ
+        },
+        getTickCandlesVolume() {
+
+            let blocks = this.getReverseVolumeBlocks
+
+            if (blocks.length == 0) {
+                return {}
+            }
+
+            let candleLookback = this.tickLookback
+            if (candleLookback > blocks.length) {
+                candleLookback = blocks.length
+            }
+
+            let candles = []
+            for (let i = 0; i < candleLookback; i++) {
+                if (blocks[i]) {
+                   candles.push(blocks[i]['tickList'])
+                }
+            }
+            //console.log('candles', candles)
+
+            let tickOBJ = {}
+
+            for (let c in candles) {
+                for (let t in candles[c]) {
+                    let tick = candles[c][t]['tickPrice']
+                    if (!tickOBJ[tick]) {
+                        tickOBJ[tick] = []
+                    }
+                }
+            }
+            for (let tickLevel in tickOBJ) {
+                for (let i = 0; i < candleLookback; i++) {
+                    tickOBJ[tickLevel].push({})
+                }
+            }
+
+            for (let tickLevel in tickOBJ) {
+                for (let c in candles) {
+                    for (let t in candles[c]) {
+                        let info = candles[c][t]
+                        let tick = info['tickPrice']
+                        let candle = candleLookback - c - 1
+                        if (tickLevel == tick) {
+                            tickOBJ[tickLevel][candle] = info
+                        }
+                    }
+                }
+            }
+
+            return tickOBJ
+        },
+        getReverseVolumeBlocks() {
+            return this.volumeBlocks.slice().reverse()
+        },
+        getReverseDeltaBlocks() {
+            let x = this.dbcount
+            if (x == 100) {
+                return this.deltaBlocks.slice(-this.dbcount*2).reverse()
+            } else {
+                return this.deltaBlocks.slice(-this.dbcount - 300, -this.dbcount).reverse()
+            }
+        },
+        getReverseTimeBlocks() {
+            return this.timeBlocks.slice().reverse()
+        },
+        getOFTableTime() {
+            let lb = this.tickLookback
+            if (this.tickLookback > this.getReverseTimeBlocks.length) {
+                lb = this.getReverseTimeBlocks.length
+            }
+            return this.getTimeBlocks.slice(-lb)
+        },
+        getOFTableVolume() {
+            let lb = this.tickLookback
+            if (this.tickLookback > this.getReverseVolumeBlocks.length) {
+                lb = this.getReverseVolumeBlocks.length
+            }
+            return this.getVolumeBlocks.slice(-lb)
+        },
+
+        getTimeBlocks() {
+            return this.timeBlocks
+        },
+        getVolumeBlocks() {
+            return this.volumeBlocks
+        },
+        getVolumeBlocksVert() {
+            let vbl = this.volumeBlocks2.length
+            if (vbl > 50) {
+                return this.volumeBlocks2.slice(-50)
+            } else {
+                return this.volumeBlocks2
+            }
+        },
+        getDeltaBlocksVert() {
+            let vbl = this.deltaBlocks.length
+            if (vbl > 50) {
+                return this.deltaBlocks.slice(-50)
+            } else {
+                return this.deltaBlocks
+            }
+        }
+    },
+    watch: {
+
+        tpElement: function () {
+            element = document.getElementById(this.tpElement)
+            if (element) {
+                element.innerHTML = "TP:" + this.tpElement.split('_')[3]
+                element.style.background = '#004D40'
+            }
+        },
+        stopElement: function () {
+            element = document.getElementById(this.stopElement)
+            if (element) {
+                element.innerHTML = 'SL'
+                element.style.background = 'firebrick'
+            }
+        },
+        tpClear: function () {
+            element = document.getElementById(this.tpClear)
+            if (element) {
+                element.innerHTML = ''
+                element.style.background = ''
+            }
+        },
+        stopClear: function () {
+            element = document.getElementById(this.stopCleart)
+            if (element) {
+                element.innerHTML = ''
+                element.style.background = ''
+            }
+        },
+        stream: function () {
+            //console.log('stream', this.stream, this.lastAlertTime )
+            if (this.stream['alerts'] && this.stream['alerts'][0]) {
+                if (this.lastAlertTime && this.stream['alerts'][0][0] != this.lastAlertTime) {
+                    console.log('aTime', this.lastAlertTime)
+                    this.audioAlert()
+                    this.lastAlertTime = this.stream['alerts'][0][0]
+                } else {
+                    this.lastAlertTime = this.stream['alerts'][0][0]
+                }
+            }
+        },
+        UTCadjust: function () {
+            //console.log('UTC', this.UTCadjust)
+            localStorage.setItem('UTC', this.UTCadjust)
+        },
+        imbalance: function () {
+            //console.log('UTC', this.UTCadjust)
+            localStorage.setItem('imbalance', this.imbalance)
+        },
+        timeBlockSize: function () {
+            this.timeBlocks = []
+        },
+        showChart: function () {
+            if (this.showChart > 2) {
+                this.showChart = 0
+            }
+            localStorage.setItem('showChart', this.showChart)
+        },
+        flowPositionTime: function () {
+            if (this.flowPositionTime > 2) {
+                this.flowPositionTime = 1
+            }
+            localStorage.setItem('flowPositionTime', this.flowPositionTime)
+        },
+        flowPositionVol: function () {
+            if (this.flowPositionVol > 2) {
+                this.flowPositionVol = 1
+            }
+            localStorage.setItem('flowPositionVol', this.flowPositionVol)
+        },
+        lookback: function () {
+            if (this.lookback > 100) {
+                this.lookback = 100
+            } else if (this.lookback < 1) {
+                this.lookback = 10
+            }
+            //console.log('lookback')
+            localStorage.setItem('lookback', this.lookback)
+        },
+        tickLookback: function () {
+            //console.log('lookback')
+            localStorage.setItem('tickLookback', this.tickLookback)
+        }
+
+    }
+
+})// end NEW VUE
+
+}
+
+
+</script>
+
+
+
+{% endblock %}
+
+
+

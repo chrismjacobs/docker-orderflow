@@ -1,0 +1,77 @@
+
+services:
+
+  bbws:
+    build:
+      context: './bbws_app'
+    container_name: bbws
+    env_file: .env
+    ports:
+      - 8000:8000
+    depends_on:
+      - redis
+      - rabbit
+
+  redis:
+    image: redis
+    container_name: rMaster
+    env_file: .env
+    environment:
+      - REDIS_PASS=${REDIS_PASS}
+    command: bash -c "redis-server --appendonly yes --requirepass ${REDIS_PASS}"
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/data
+
+  rabbit:
+    hostname: rabbit
+    image: "rabbitmq:3-management"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBIT_PASS}
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+
+  log_worker:
+    container_name: log_worker
+    user: nobody
+    build: './log_worker'
+    env_file: .env
+    depends_on:
+      - bbws
+      - redis
+      - rabbit
+
+  flask_app:
+    container_name: flask_of
+    env_file: .env
+    ports:
+      - 5000:5000
+    build: './flask_app'
+    depends_on:
+      - bbws
+      - redis
+
+
+
+  # flower:
+  #   container_name: flower
+  #   build: .
+  #   env_file: .env
+  #   command: celery -A taskLogs.celery flower --port=5555
+  #   ports:
+  #     - 5556:5555
+  #   environment:
+  #     - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+  #   depends_on:
+  #     - worker
+  #     - redis
+
+
+
+
+
+
+
