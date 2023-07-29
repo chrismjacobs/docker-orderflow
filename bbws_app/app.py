@@ -35,15 +35,15 @@ def manageStream(pair, coin):
         streamTime = round(float(sess['time_now']), 1)
         streamPrice = float(sess['result'][0]['last_price'])
     else:
-        return {
-            'streamOI' : stream['lastOI'],
-            'streamPrice' : stream['lastPrice'],
-            'streamTime' : stream['lastTime']
-        }
+        streamOI = stream['lastOI']
+        streamPrice = stream['lastPrice']
+        streamTime =  stream['lastTime']
+
 
     stream['lastTime'] = streamTime
     stream['lastPrice'] = streamPrice
     stream['lastOI'] = streamOI
+    print(stream)
 
     timeblocks = json.loads(r.get('timeblocks_' + coin))
     currentBuys = 0
