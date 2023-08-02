@@ -1,0 +1,25 @@
+
+## Required private environment keys
+## .env file stored in home directory
+
+REDIS_PASS='redispass'
+REDIS_IP='redis'
+
+RABBIT_PASS='rabbitpass'
+RABBIT_USER='user'
+CELERY_BROKER_URL='amqp://user:rabbitpass@rabbit:5672'
+
+API_KEY='Bybit API key'
+API_SECRET='Bybit API secret'
+
+DISCORD_CHANNEL='{"BTC": channelid<integer>}' ## one channel for eac coin monitored
+DISCORD_TOKEN='token code'
+DISCORD_USER='userID<integer>'
+DISCORD_WEBHOOK='webhook address'
+
+AUX_ACTIVE = '3'
+TRADE_CODE = '<integer>'
+SECRET_KEY = ''
+AWS_ACCESS_KEY_ID = ''
+AWS_SECRET_ACCESS_KEY = ''
+LOGIN = '{"user": "username", "code": "password"}'
