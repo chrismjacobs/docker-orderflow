@@ -13,13 +13,13 @@ from taskBot import  setCoinDict, startDiscord, sendMessage
 from celery import Celery
 from celery.utils.log import get_task_logger
 
-# REDIS_URL = 'redis://:' + REDIS_PASS + '@' + REDIS_IP + ':6379'
+celeryapp = Celery('celery_worker', broker=CELERY_BROKER_URL, backend='rpc://')
 
-celery = Celery('log_worker', broker=CELERY_BROKER_URL, backend='rpc://')
-# celery.conf.broker_url = CELERY_BROKER_URL
-# celery.conf.result_backend = CELERY_BROKER_URL
+## configure the routes of tasks to different workers noted as exchanges and marked in the celery command as -Q (queue)
+celeryapp.config_from_object('celeryconfig')
 
-print('CELERY APP', celery, CELERY_BROKER_URL)
+
+print('CELERY APP', celeryapp, CELERY_BROKER_URL)
 logger = get_task_logger(__name__)
 
 
@@ -28,6 +28,7 @@ def manageStream(pair, coin):
     stream = json.loads(r.get('stream_' + coin))
 
 
+    ### to speed up processing latest information is called only 30% of the time
     t = dt.datetime.today()
     if t.microsecond < 300000:
         sess = session.latest_information_for_symbol(symbol=pair)
@@ -43,7 +44,7 @@ def manageStream(pair, coin):
     stream['lastTime'] = streamTime
     stream['lastPrice'] = streamPrice
     stream['lastOI'] = streamOI
-    print(stream)
+    # print(stream)
 
     timeblocks = json.loads(r.get('timeblocks_' + coin))
     currentBuys = 0
@@ -315,12 +316,12 @@ def handle_trade_message(msg):
 
 
     print('LOG TIME')
-    celery.send_task('taskLogs.logTimeUnit', kwargs={'buyUnit': buyUnit, 'sellUnit' : sellUnit, 'coin' : coin})
+    celeryapp.send_task('logTimeUnit', kwargs={'buyUnit': buyUnit, 'sellUnit' : sellUnit, 'coin' : coin})
 
 
 
     if volControl[0]: # ignore small size trades
-        celery.send_task('taskLogs.logVolumeUnit', kwargs={'buyUnit': buyUnit, 'sellUnit' : sellUnit, 'coin' : coin, 'size' : int(volControl[1])} )
+        celeryapp.send_task('logVolumeUnit', kwargs={'buyUnit': buyUnit, 'sellUnit' : sellUnit, 'coin' : coin, 'size' : int(volControl[1])} )
 
     print('LOG VOLUME')
 
@@ -329,7 +330,7 @@ def handle_trade_message(msg):
         deltaCount = deltaControl['block']
         if LOCAL:
             deltaCount = 10000
-        celery.send_task('taskLogs.logDeltaUnit', kwargs={'buyUnit': buyUnit, 'sellUnit' : sellUnit, 'coin' : coin, 'deltaCount' : deltaCount} )
+        celeryapp.send_task('logDeltaUnit', kwargs={'buyUnit': buyUnit, 'sellUnit' : sellUnit, 'coin' : coin, 'deltaCount' : deltaCount} )
 
     print('LOG DELTA')
 
@@ -421,8 +422,8 @@ def runStream():
     return print('Task Closed')
 
 
-
-runStream()
+if __name__ == '__main__':
+    runStream()
 
 
 

@@ -17,10 +17,10 @@ ENV PYTHONUNBUFFERED=1
 COPY requirements.txt /
 RUN pip install -r requirements.txt
 
-ADD . /log_worker
-WORKDIR /log_worker
+ADD . /delta_worker
+WORKDIR /delta_worker
 
 ENV C_FORCE_ROOT=1
 
-ENTRYPOINT celery -A taskLogs worker -Q log_worker --loglevel=info
+ENTRYPOINT celery -A taskDelta worker -Q delta_worker --loglevel=info
 

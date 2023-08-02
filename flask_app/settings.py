@@ -11,14 +11,14 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 SECRET_KEY = os.getenv('SECRET_KEY')
 API_KEY = os.getenv('API_KEY')
 API_SECRET = os.getenv('API_SECRET')
-START_CODE = os.getenv('START_CODE')
+TRADE_CODE = os.getenv('TRADE_CODE')
 LOCAL = False
 DEBUG = False
 LOGIN = os.getenv('LOGIN')
 REDIS_IP = os.getenv('REDIS_IP')
 REDIS_PASS = os.getenv('REDIS_PASS')
 
-
+# REDIS_URL = 'redis://:' + REDIS_PASS + '@' + REDIS_IP + ':6379'
 r = redis.Redis(
     host=REDIS_IP,
     port=6379,

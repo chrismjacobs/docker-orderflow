@@ -44,6 +44,16 @@ services:
       - redis
       - rabbit
 
+  delta_worker:
+    container_name: delta_worker
+    user: nobody
+    build: './delta_worker'
+    env_file: .env
+    depends_on:
+      - bbws
+      - redis
+      - rabbit
+
   flask_app:
     container_name: flask_of
     env_file: .env

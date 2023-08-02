@@ -1,7 +1,7 @@
 from fapp import app, r
 import json
 from flask import Flask, request, render_template, jsonify, abort
-from settings import session, START_CODE, auth_required
+from settings import session, TRADE_CODE, auth_required
 
 
 @app.route('/trade')
@@ -278,7 +278,7 @@ def getOrder():
     leverage = float(request.form ['leverage'])
     pw = request.form ['pw']
 
-    if int(pw) != int(START_CODE):
+    if int(pw) != int(TRADE_CODE):
         print('FAIL')
         return jsonify({'result' : 'fail'})
 
