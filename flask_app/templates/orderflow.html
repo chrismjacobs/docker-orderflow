@@ -118,7 +118,6 @@
 
                 <div v-if="showTable == 'Notes'" class="text-white p-3">
 
-                    <button @click="showTable = 'Time'" type="button" class="btn btn-danger" data-bs-toggle="button" autocomplete="off">Back</button>
 
                     <br>
                     <br>
@@ -847,7 +846,7 @@ let vue = new Vue({
         UTCadjust : 0,
         imbalance : 369,
         coin : 'BTC',
-        coins : ['BTC', 'ETH'],
+        coins : ['BTC'],
         coinOBJ : false,
         history : {},
         showTable : 'Time',
@@ -1167,6 +1166,10 @@ let vue = new Vue({
             return Math.round(abs*c[this.coin])/c[this.coin]
         },
         toggleCoin: function () {
+            if (this.showTable != 'Time') {
+                this.showTable = 'Time'
+                return false
+            }
             let x = this.coins.indexOf(this.coin)
 
             let n = x + 1
@@ -1876,6 +1879,12 @@ let vue = new Vue({
                     vue.coinOBJ = cOBJ
                 }
 
+                for (let c in vue.coinOBJ) {
+                    if (!vue.coins.includes(c)) {
+                        vue.coins.push(c)
+                    }
+                }
+
                 let tbf = document.getElementById('tbf')
                 if (tbf && tbf.scrollLeft == 0) {
                     tbf.scrollLeft = tbf.scrollWidth
@@ -1902,18 +1911,6 @@ let vue = new Vue({
                 if (vue.showChart == 2) {
                     vue.updateOFCharts()
                 }
-
-                //vue.user = data.user
-
-                if (vue.user) {
-                    vue.coins = ['BTC', 'ETH']
-                } else {
-                    vue.coins = ['BTC']
-                }
-                //console.log('USER', data.user)
-
-                // vue.login = data.login
-                //console.log('LOGIN', data.login)
 
             })
             .fail(function(){
