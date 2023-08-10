@@ -188,11 +188,11 @@ def startDiscord():
             latestprice = float(session.latest_information_for_symbol(symbol='BTCUSD')['result'][0]['last_price'])
             coinDict = json.loads(r.get('coinDict'))
             code = msg.content.split(' ')[0]
+            switch = deltaSet[code][0]
+            side = deltaSet[code][1]
 
             if len(msg.content.split(' ')) == 1:
                 ## just checking order
-                switch = deltaSet[code][0]
-                side = deltaSet[code][1]
                 price = coinDict['BTC'][switch][side]['price']
                 replyText = 'Check: ' + side + ' ' + str(price) + ' ' + str(coinDict['BTC'][switch][side]['fraction']) + ' ' + str(coinDict['BTC'][switch][side]['stop'])
             else:
