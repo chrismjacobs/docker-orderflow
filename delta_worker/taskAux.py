@@ -192,14 +192,20 @@ def marketOrder(side, fraction, stop, profit, mode):
 
             if timeblocks[-2]['vwap_task']:
                 vwap = round(timeblocks[-2]['vwap_task'] + (15*limits[side]))
-                print('vwap2 ' + str(vwap))
+                message = 'vwap2 ' + str(vwap)
+                sendMessage('BTC', message, '', 'red')
+                print(message)
 
             if abs(positionPrice - vwap) > 200:
                 vwap = round(positionPrice + (200*limits[side]))
-                print('vwap3 ' + str(vwap))
+                message = 'vwap3 ' + str(vwap)
+                sendMessage('BTC', message, '', 'red')
+                print(message)
             elif abs(positionPrice - vwap) < 60:
                 vwap = round(positionPrice + (60*limits[side]))
-                print('vwap4 ' + str(vwap))
+                message = 'vwap4 ' + str(vwap)
+                sendMessage('BTC', message, '', 'red')
+                print(message)
 
             print('VWAP CALCULATION ' + str(vwap))
 
@@ -225,8 +231,6 @@ def marketOrder(side, fraction, stop, profit, mode):
     return True
 
 def getSwitchMessage(SIDE, ACTIVE, THD, PD, BT, CTD, FC):
-
-
     switchMessage = 'nothing'
 
     if int(AUX_ACTIVE) == 1:
